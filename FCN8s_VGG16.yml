@@ -2,22 +2,20 @@ model:
   arch: fcn8s-vgg16
 data:
   dataset: scanNet
-  train_file: train_rn.csv
-  val_split: val_min.csv
   n_class: 20
   img_h: 484
   img_w: 648
   root_dir: ".\\"
-  train_file: ".\\train_1000from012.csv"
-  val_file: ".\\val_90from012.csv"
+  train_file: ".\\train_3000from0123.csv"
+  val_file: ".\\val_900from0123.csv"
   mean_file: ".\\Mean_train_1000from012.npy"
-  class_weight_file: ".\\class_weight.npy"
+  class_weight_file: ".\\class_weight_3000from0123_half.npy"
 training:
-  epochs: 1000
+  epochs: 500
   batch_size: 4
   optimizer:
-    name: 'RMSprop'
-    lr: 1e-2
+    name: 'RMSProp'
+    lr: 1e-3
     weight_decay: 1e-5
     momentum: 0.5
   loss:
@@ -25,5 +23,5 @@ training:
     size_average: False
   lr_schedule:
     step_size: 10
-    gamma: 0.5
+    gamma: 0.9
   model_dir: ".\\models"

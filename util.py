@@ -4,6 +4,7 @@ import os
 import csv
 from PIL import Image
 import random
+from PIL import Image
 
 def map_label_image(image, label_mapping):
     #image = image.astype(np.uint8)
@@ -72,6 +73,43 @@ def label_mapping(image, label_map_file, label_from = 'id', label_to = 'nyu40id'
       #  preds_.append(p_v)
        # targets_.append(t_v)
     #return np.array(preds_),np.array(targets_)
+
+def visulaize_segmentation(output, label, img):
+    h,w = output.shape
+    pred = output.astype(np.uint8)
+    target = label.astype(np.uint8)
+    color_palette = create_color_palette_valid()
+    pred_v = np.zeros([h,w,3], dtype=np.uint8)
+    target_v = np.zeros([h,w,3], dtype=np.uint8)
+    for idx, color in enumerate(color_palette):
+        pred_v[pred==idx]=color
+        target_v[target==idx]=color
+    #img= img.data.cpu().numpy()
+    print(img.shape)
+    print(pred_v.shape)
+    img= 255*img
+    img = img.astype(np.uint8)
+    Img = Image.fromarray(img,'RGB')
+    pred_viz = Image.fromarray(pred_v, 'RGB')
+    target_viz = Image.fromarray(target_v, 'RGB')
+
+    images = [Img, pred_viz, target_viz]
+    widths, heights = zip(*(i.size for i in images))
+    
+    total_width = sum(widths)
+    max_height = max(heights)
+
+    new_im = Image.new('RGB', (total_width, max_height))
+
+    x_offset = 0
+    for im in images:
+        new_im.paste(im, (x_offset, 0))
+        x_offset += im.size[0]
+    
+
+    return new_im
+
+
 
 def visulaize_output(outputs,labels,n_class):
     outputs = outputs.data.cpu().numpy()
@@ -154,35 +192,11 @@ def count_parameters(model):
 # 39	otherfurniture
 # 40	otherprop
 def create_color_palette_valid():
-    return [
-        
-        (152, 223, 138),		# floor
-        (174, 199, 232),		# wall
-        (140, 86, 75),          # sofa
-        (188, 189, 34), 		# chair
-        (31, 119, 180), 		# cabinet
-        
-        (82, 84, 163),  		# otherfurn
-        (214, 39, 40),  		# door
-        (255, 152, 150),		# table
-        (100, 85, 144),
-        (148, 103, 189),		# bookshelf
-        (219, 219, 141),		# curtain
-        (94, 106, 211),
-        
-        
-        
-        (255, 127, 14), 		# refrigerator
-        (202, 185, 52),
-        (255, 187, 120),		# bed
-
-        (197, 176, 213),		# window
-        (23, 190, 207), 		# counter
-        (247, 182, 210),		# desk
-        (91, 163, 138), 
-        (146, 111, 194),
-        (0,0,0) 
-    ]
+    valid_class = [1,3,2,8,39,6,16,24,40,10,12,9,38,5,7,4,18,14,25,32]
+    color_palette = create_color_palette()
+    color_palette_valid = [color_palette[i] for i in valid_class]
+    color_palette_valid.append((112, 128, 144)) # align other classes to the color of sink
+    return color_palette_valid
 def create_color_palette():
     return [
        (0, 0, 0),         #[2,1,6,5,3,39,8,7,40,10,16,38,24,18,4,9,12,14,25,32]
@@ -240,7 +254,7 @@ def convert_to_valid_trainId(label, class_mapping):
     
 def valid_class_map():
     #valid_class = [1,2,3,6,39,8,16,38,5,10,7,24,40,9,4,18,12,14,25,32] 
-    valid_class = [2,1,6,5,3,39,8,7,40,10,16,38,24,18,4,9,12,14,25,32]
+    valid_class = [1,3,2,8,39,6,16,24,40,10,12,9,38,5,7,4,18,14,25,32]
     #[ 2  0  1  6  5  3 39  8  7 40 10 16 38 24 18  4  9 12 14 25 32 27 33 37 34 35 11 15 36 30 13 29 17 19 31 21 22 23 26 28 20]
     class_mapping = {}
     classes = np.arange(41)
@@ -248,8 +262,45 @@ def valid_class_map():
         if cl in valid_class:
             class_mapping[cl]=valid_class.index(cl)
         else:
-            class_mapping[cl]=20
+            if cl!=0:
+                class_mapping[cl]=20
+            else:
+                class_mapping[cl]=255
+    print(class_mapping)
     return class_mapping
+
+def _fast_hist(label_true, label_pred, n_class):
+    mask = (label_true >= 0) & (label_true < n_class)
+    hist = np.bincount(
+        n_class * label_true[mask].astype(int) +
+        label_pred[mask], minlength=n_class ** 2).reshape(n_class, n_class)
+    return hist
+
+##########
+def label_accuracy_score(label_trues, label_preds, n_class):
+    """Returns accuracy score evaluation result.
+      - overall accuracy
+      - mean accuracy
+      - mean IU
+      - fwavacc
+    """
+    hist = np.zeros((n_class, n_class))
+    for lt, lp in zip(label_trues, label_preds):
+        hist += _fast_hist(lt.flatten(), lp.flatten(), n_class)
+    acc = np.diag(hist).sum() / hist.sum()
+    with np.errstate(divide='ignore', invalid='ignore'):
+        acc_cls = np.diag(hist) / hist.sum(axis=1)
+    print("acc_cls: {}".format(acc_cls))
+    acc_cls = np.nanmean(acc_cls)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        iu = np.diag(hist) / (
+            hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist)
+        )
+    mean_iu = np.nanmean(iu)
+    freq = hist.sum(axis=1) / hist.sum()
+    fwavacc = (freq[freq > 0] * iu[freq > 0]).sum()
+    return acc, acc_cls, mean_iu, fwavacc
+#########
 def main():
     label_map_file = "C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scannetv2-labels.combined.tsv"
     label = Image.open("C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scene0000_00\\scene0000_00_2d-label-filt\\label-filt\\20.png")

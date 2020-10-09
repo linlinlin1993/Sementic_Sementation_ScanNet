@@ -60,9 +60,9 @@ class ScanNet2d(Dataset):
         if self.crop:
             h,w,_ = img.shape
             if self.phase=='train':
-                top = random.randint(0, h-self.new_h)
-                left = random.randint(0, w-self.new_w)
-                img = img[top:top+self.new_h, left:left+self.new_w]
+                #top = random.randint(0, h-self.new_h)
+                #left = random.randint(0, w-self.new_w)
+                img = img[0:0+self.new_h, 0:0+self.new_w]
                 label = label[0:0+self.new_h, 0:0+self.new_w]
             if self.phase=='val':
                 img = img[0:0+self.new_h, 0:0+self.new_w]

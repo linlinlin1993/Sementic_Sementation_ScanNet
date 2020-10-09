@@ -40,10 +40,10 @@ class FCN8s(nn.Module):
         score = self.relu(self.Deconv1(v5))  
         if DEBUG:             # size=(N, 512, in.h/16, in.w/16)
             print("Deconv1: {}".format(score.shape))
-        score = self.bn1(score + v4)                      # skip connection, size=(N, 512, in.h/16, in.w/16)
+        score = self.bn1(score + v4)                  # skip connection, size=(N, 512, in.h/16, in.w/16)
         score = self.relu(self.Deconv2(score))  
         if DEBUG: 
-            print("Deconv2: {}".format(score.shape))         # size=(N, 256, in.h/8, in.w/8)
+            print("Deconv2: {}".format(score.shape))  # size=(N, 256, in.h/8, in.w/8)
         score = self.bn2(score + v3)                      # element-wise add, size=(N, 256, in.h/8, in.w/8)
         score = self.bn3(self.relu(self.Deconv3(score))) 
         if DEBUG:
@@ -56,7 +56,7 @@ class FCN8s(nn.Module):
             print("Deconv5: {}".format(score.shape))
         score = self.classifier(score) 
         if DEBUG:
-            print("out: {}".format(score.shape))                   # size=(N, n_class, in.h/1, in.h/1)
+            print("out: {}".format(score.shape))  # size=(N, n_class, in.h/1, in.h/1)
         
        
 

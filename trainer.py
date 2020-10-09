@@ -11,7 +11,7 @@ import util
 import pandas as pd
 from matplotlib.image import imread
 import imageio
-from util import GenerateColorMapping
+from util import GenerateColorMapping,create_color_palette_valid
 from PIL import Image
 from LoadData import ScanNet2d
 import matplotlib.pyplot as plt
@@ -83,10 +83,10 @@ def create_color_palette():
 
 def analysis_input(train_file):
     classes=np.zeros((41))
-    train_data = ScanNet2d(csv_file=train_file, phase = 'train', MeanRGB=np.array([0.0,0.0,0.0]),n_class=40,trainsize=(968, 1296),data_analysis=True)
+    train_data = ScanNet2d(csv_file=train_file, phase = 'train', MeanRGB=np.array([0.0,0.0,0.0]),n_class=40,trainsize=(484, 648),data_analysis=True)
     train_loader = DataLoader(train_data, batch_size=1, shuffle=False, num_workers=1)
     for i,batch in enumerate(train_loader):
-        target = batch['l'].cpu().numpy().reshape(1, 968*1296)
+        target = batch['l'].cpu().numpy().reshape(1, 484*648)
     
         for cl in range(41):
             target_cls = target==cl
@@ -97,6 +97,26 @@ def analysis_input(train_file):
     # plt.show()
     # plt.savefig("input_analysis.png")
     return classes
+def visualize_input_data(train_file):
+    #MeanRGB = np.load(".\\Mean_train_1000from012.npy")
+    MeanRGB = np.array([0,0,0])
+    train_data = ScanNet2d(csv_file=train_file, phase = 'train', trainsize=(484, 648), MeanRGB=MeanRGB, data_analysis=True)
+    train_loader = DataLoader(train_data, batch_size=1, shuffle=True, num_workers=1)
+    for i,batch in enumerate(train_loader):
+        label = batch['l'].cpu().numpy().reshape(1,484,648)[0]
+        
+        inp = batch['X'].cpu().numpy().transpose(0,2,3,1)[0]
+        print(inp.shape)
+        vis_image = np.zeros([484, 648, 3], dtype=np.uint8)
+        color_palette = create_color_palette()
+        for idx, color in enumerate(color_palette):
+            vis_image[label==idx] = color
+        imageio.imwrite(".\\data_\\"+str(i)+"_label.png", vis_image)
+        imageio.imwrite(".\\data_\\"+str(i)+"_render.png", inp)
+
+
+
+
 def computer_class_weights(train_file):
     classses_ = analysis_input(train_file)
     sortclass = classses_.argsort()[::-1]
@@ -116,76 +136,49 @@ def computer_class_weights(train_file):
     print(median_f)
     return class_weight
 if __name__=='__main__':
-    root_dir=".\\"
-    train_file = os.path.join(root_dir, "train_3000from0123.csv")
-    label_map_file="C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scannetv2-labels.combined.tsv"
-    classses_ = analysis_input(train_file)
-    sortclass = classses_.argsort()[::-1]
-    classses_[::-1].sort()
-    valid = classses_[:21]
-    valid_class = sortclass[:21]
-    not_valid = classses_[21:]
-    nvalid_class = sortclass[21:]
-    not_valid_f = np.sum(not_valid)+valid[1]
-    valid = np.delete(valid, 1)
-    valid_class= np.delete(valid_class,1)
-    print(valid.shape)
-    all_cf = np.concatenate([valid,np.array([not_valid_f])])
-    import statistics
-    median_f = statistics.median(all_cf)
-    class_weight = median_f/all_cf
-    np.save("class_weight_3000from0123.npy",class_weight)
-    print(valid_class)
-    print(classses_)
-    print(all_cf)
-    print(median_f)
-    print(median_f/all_cf)
+    # root_dir=".\\"
+    # train_file = os.path.join(root_dir, "train_1000from012.csv")
+    # label_map_file="C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scannetv2-labels.combined.tsv"
+    # classses_ = analysis_input(train_file)
+    # sortclass = classses_.argsort()[::-1]
+    # print("sortclass: {}".format(sortclass))
+    # classses_[::-1].sort()
+    
+    # ## remove unlabel samples
+    # classses = np.delete(classses_, list(sortclass).index(0))
+    # sortclass_without0 = np.delete(sortclass, list(sortclass).index(0))
+    # valid = classses[:20]
+    # valid_class = sortclass_without0[:20]
+    # not_valid = classses[20:]
+    # nvalid_class = sortclass_without0[20:]
+    # not_valid_f = np.sum(not_valid)
+    # print(valid.shape)
+    # all_cf = np.concatenate([valid,np.array([not_valid_f])])
+    # import statistics
+    # median_f = statistics.median(all_cf)
+    # class_weight = median_f/all_cf
+    # np.save("class_weight_1000from012_half_nounlabel.npy",class_weight)
+    # print(valid_class)
+    # print(classses_)
+    # print(all_cf)
+    # print(median_f)
+    # print(median_f/all_cf)
+    
 
-    # classses = classses_
-    # classses[::-1].sort()
-    # valid_class_ = classses[:20]
-    # print(valid_class_)
-    # valid_class=[list(classses_).index(num) for num in valid_class_]
-
-
+     
 
 
-  
-    # MeanRGB_train = ComputeMeanofInput(train_file)
-    # train_data = ScanNet2d(csv_file=train_file, phase = 'train', MeanRGB=np.array([0.0,0.0,0.0]))
-    # # print("c")
-    # train_loader = DataLoader(train_data, batch_size=1, shuffle=False, num_workers=1)
-    # # print("a")
-
+    visualize_input_data(".\\train_300from789.csv")
+    # train_file = os.path.join(root_dir, "train_1000from012.csv")
+    # train_data = ScanNet2d(csv_file=train_file, phase = 'train', MeanRGB=np.array([0.0,0.0,0.0]),n_class=20,trainsize=(484, 648),data_analysis=False)
+    # train_loader = DataLoader(train_data, batch_size=2, shuffle=False, num_workers=1)
     # for i,batch in enumerate(train_loader):
-      
-    #     target = batch['l'].cpu().numpy().reshape(1, 484, 648)
-    #     print(np.amax(target))
-    #     visualize_label_image(".\\inputvis\\"+str(i)+".png",target[0])
-
-    #     #print(target.shape)
-    #     if np.amax(target)>40:
-    #         print(np.amax(target))
-    #         print("batch {}".format(i))
-    # data = pd.read_csv(train_file)
-    # label_file = data.iloc[403,2]
-    # if label_file == "C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scene0002_00\\scene0002_00_2d-label-filt\\label-filt\\1417.png" :
-    #     print("rty")
-    # print(label_file)
-
-    # img_file = "C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scene0000_00\\2d-origiRGB\\4315.png"
-    # label_file = "C:\\Users\\ji\\Documents\\ScanNet-master\\data\\scene0002_00\\label\\1000.png"
-    # print("label file {}".format(label_file))
-    # la_ = np.array(imageio.imread(label_file))
-    # img = imread(img_file)
-
-    # print(type(la_[0,0]))
-    # print(la_)
-    # print(np.amax(la_))
-    # print(np.amin(la_))
-    # label = util.label_mapping(la_,label_map_file)
-    # visualize_label_image(".\\1000.png", label)
+    #     target = batch['l']
+    #     if i ==0:
+    #         print("target")
+    #         print(target)
+    #         t = target.view(2,484,648,1).repeat(1,1,1,21)
+    #         print(t)
+    #         print(t.shape)
+    #         print(t>=0)
     
-    
-    # print(np.amax(label))
-    #     #print(label)
