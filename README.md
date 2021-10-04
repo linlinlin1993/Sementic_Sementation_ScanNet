@@ -1,5 +1,5 @@
 # Sementic_Sementation_ScanNet
-get the <br />
+get the 
 experiments setting
 |cl methods| trin time |
 |----------|-----------|
